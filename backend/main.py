@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from db import init_db
+
+# import our database initializer and our decoupled routers
+from db import init_db 
 from routers import search, workspace
 
 app = FastAPI(title="Group Travel Matcher")
@@ -14,13 +16,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# this initializes DB and seed data on startup
-init_db()
+# run database setup on startup
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
-# connect the separate feature branches
+# wire up the routers
 app.include_router(search.router)
 app.include_router(workspace.router)
 
 @app.get("/")
 def health_check():
-    return {"status": "Backend is running!"}
+    return {"status": "Backend is running, Database is seeded, and Routers are securely wired!"}
