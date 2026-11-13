@@ -46,11 +46,12 @@ main{max-width:1080px;margin:0 auto;padding:36px 16px 80px}
 .tab.on{background:#fff;color:var(--ink);box-shadow:0 6px 16px rgba(31,42,36,.18)}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 label.f{display:block;font-size:.8rem;color:var(--mute);margin-bottom:6px}
-input,select,textarea{width:100%;padding:14px 22px;border-radius:999px;border:1px solid rgba(31,42,36,.18);background:rgba(255,255,255,.55);color:var(--txt);font:500 1rem 'DM Sans';outline:0;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+input,select{width:100%;padding:14px 22px;border-radius:999px;border:1px solid rgba(31,42,36,.18);background:rgba(255,255,255,.55);color:var(--txt);font:500 1rem 'DM Sans';outline:0;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.9);height:52px;min-height:52px;box-sizing:border-box}
+textarea{width:100%;padding:14px 22px;border-radius:26px;border:1px solid rgba(31,42,36,.18);background:rgba(255,255,255,.55);color:var(--txt);font:500 1rem 'DM Sans';outline:0;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.9);min-height:90px;box-sizing:border-box}
 input::placeholder,textarea::placeholder{color:rgba(31,42,36,.55)}
 .dd{position:relative}
-.dd-btn{position:relative;width:100%;text-align:left;padding:14px 52px 14px 22px;border-radius:999px;border:1px solid rgba(31,42,36,.18);background:rgba(255,255,255,.55);color:var(--txt);font:500 1rem 'DM Sans';cursor:pointer;outline:0;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
-.dd-btn::after{content:"";position:absolute;right:28px;top:50%;width:8px;height:8px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.dd-btn{position:relative;width:100%;text-align:left;padding:0 52px 0 22px;border-radius:999px;border:1px solid rgba(31,42,36,.18);background:rgba(255,255,255,.55);color:var(--txt);font:500 1rem 'DM Sans';cursor:pointer;outline:0;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.9);height:52px;min-height:52px;display:flex;align-items:center;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dd-btn::after{content:"";position:absolute;right:24px;top:50%;width:8px;height:8px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
 .dd.open .dd-btn::after{transform:translateY(-25%) rotate(-135deg)}
 .dd-btn:focus,.dd.open .dd-btn{border-color:var(--sage);box-shadow:0 0 0 4px rgba(107,143,113,.25);background:#fff}
 .dd-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;list-style:none;margin:0;padding:12px;max-height:260px;overflow:auto;border-radius:32px;background:rgba(240,238,230,.82);backdrop-filter:blur(22px) saturate(1.8);-webkit-backdrop-filter:blur(22px) saturate(1.8);border:1px solid rgba(255,255,255,.6);box-shadow:inset 0 1.5px 0 var(--edge),0 24px 50px -18px rgba(31,42,36,.4)}
@@ -183,7 +184,10 @@ textarea{border-radius:26px!important}
 
 <nav class="glass">
   <div class="logo disp" onclick="goHome()"><i></i>Travel Matcher</div>
-  <div id="nav-user" class="hidden"><span class="pill" id="nav-name"></span><span class="pill" id="nav-traveller-id"></span><button class="link" style="margin:0" onclick="logout()">Log out</button></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn btn-outline sm" style="font-size:.82rem;padding:6px 14px;height:38px;border-color:rgba(31,42,36,.25)" onclick="confirmResetDb()" title="Reset database to fresh JSON dataset for live demo">🔄 Reset Demo Data</button>
+    <div id="nav-user" class="hidden"><span class="pill" id="nav-name"></span><span class="pill" id="nav-traveller-id"></span><button class="link" style="margin:0" onclick="logout()">Log out</button></div>
+  </div>
 </nav>
 
 <div id="alert-box" class="hidden" role="status"></div>
@@ -205,6 +209,18 @@ textarea{border-radius:26px!important}
         <div class="chips" id="su-chips"></div></div>
     </div>
     <button class="btn full" type="submit">Create profile</button>
+
+    <!-- Login as existing user dropdown -->
+    <div style="margin-top:26px;padding-top:20px;border-top:1px solid rgba(31,42,36,.12);text-align:center">
+      <p style="font-size:.95rem;color:var(--mute);margin-bottom:12px;font-weight:700">Already a registered traveller? Log in:</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <select id="login-user-select"></select>
+        </div>
+        <button class="btn btn-sage sm" type="button" onclick="loginExistingUser()" style="height:52px;padding:0 24px;white-space:nowrap">Log in</button>
+      </div>
+      <div id="login-user-preview" class="meta" style="margin-top:10px;font-size:.85rem;min-height:18px"></div>
+    </div>
   </form>
 </section>
 
@@ -223,9 +239,15 @@ textarea{border-radius:26px!important}
 
     <form id="search-form">
       <div class="grid">
-        <div><label class="f" for="sg-city">Destination</label><select id="sg-city" class="city"></select></div>
-        <div><label class="f" for="sg-in">Check-in</label><input type="date" id="sg-in" required min="2027-04-01" max="2027-04-20"></div>
-        <div><label class="f" for="sg-out">Check-out</label><input type="date" id="sg-out" required min="2027-04-01" max="2027-04-20"></div>
+        <div><label class="f" for="sg-city">Destination</label><select id="sg-city" class="city">
+          <option value="Tokyo">Tokyo (Japan)</option>
+          <option value="Kyoto">Kyoto (Japan)</option>
+          <option value="Osaka">Osaka (Japan)</option>
+          <option value="Dubai">Dubai (United Arab Emirates)</option>
+          <option value="Abu Dhabi">Abu Dhabi (United Arab Emirates)</option>
+        </select></div>
+        <div><label class="f" for="sg-in">Check-in</label><input type="date" id="sg-in" required min="2027-04-01" max="2027-04-20" value="2027-04-10"></div>
+        <div><label class="f" for="sg-out">Check-out</label><input type="date" id="sg-out" required min="2027-04-01" max="2027-04-20" value="2027-04-15"></div>
         <div><label class="f" for="sg-budget">Budget (₹)</label><input type="number" id="sg-budget" required placeholder="60000"></div>
       </div>
       <label class="f" style="margin-top:16px">Pick at least 2 interests</label>
@@ -236,14 +258,22 @@ textarea{border-radius:26px!important}
     <form id="create-form" class="hidden">
       <div class="grid">
         <div><label class="f" for="cg-name">Group name</label><input id="cg-name" required placeholder="Tokyo in spring"></div>
-        <div><label class="f" for="cg-city">Destination</label><select id="cg-city" class="city"></select></div>
-        <div><label class="f" for="cg-in">Check-in</label><input type="date" id="cg-in" required min="2027-04-01" max="2027-04-20"></div>
-        <div><label class="f" for="cg-out">Check-out</label><input type="date" id="cg-out" required min="2027-04-01" max="2027-04-20"></div>
+        <div><label class="f" for="cg-city">Destination</label><select id="cg-city" class="city">
+          <option value="Tokyo">Tokyo (Japan)</option>
+          <option value="Kyoto">Kyoto (Japan)</option>
+          <option value="Osaka">Osaka (Japan)</option>
+          <option value="Dubai">Dubai (United Arab Emirates)</option>
+          <option value="Abu Dhabi">Abu Dhabi (United Arab Emirates)</option>
+        </select></div>
+        <div><label class="f" for="cg-in">Check-in</label><input type="date" id="cg-in" required min="2027-04-01" max="2027-04-20" value="2027-04-10"></div>
+        <div><label class="f" for="cg-out">Check-out</label><input type="date" id="cg-out" required min="2027-04-01" max="2027-04-20" value="2027-04-15"></div>
         <div><label class="f" for="cg-size">Group size</label><input type="number" id="cg-size" required min="2" placeholder="4"></div>
         <div><label class="f" for="cg-budget">Budget per group (₹)</label><input type="number" id="cg-budget" required placeholder="80000"></div>
       </div>
       <label class="f" for="cg-itinerary" style="margin-top:14px">Itinerary</label>
       <textarea id="cg-itinerary" rows="3" placeholder="Day 1: Senso-ji at sunrise, then street food in Asakusa…"></textarea>
+      <label class="f" style="margin-top:16px">Pick at least 2 interests</label>
+      <div class="chips" id="cg-chips"></div>
       <button class="btn full" type="submit">Post group</button>
     </form>
   </div>
@@ -255,10 +285,14 @@ textarea{border-radius:26px!important}
 <section id="view-group-detail" class="hidden">
   <button class="link" onclick="showView('dashboard')">← Back to search</button>
   <div class="glass panel">
-    <div class="detail-header">
-      <h2 id="gd-name"></h2>
-      <p class="meta" id="gd-owner-info"></p>
+    <div class="detail-header" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <div id="gd-avatar" style="width:64px;height:64px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(135deg,var(--sage),var(--clay));color:#fff;font-size:1.8rem;flex-shrink:0">👥</div>
+      <div>
+        <h2 id="gd-name"></h2>
+        <p class="meta" id="gd-owner-info"></p>
+      </div>
     </div>
+    <div id="gd-match-explanation"></div>
     <div class="detail-grid">
       <div class="detail-item"><label>Destination</label><span id="gd-city"></span></div>
       <div class="detail-item"><label>Dates</label><span id="gd-dates"></span></div>
@@ -272,6 +306,11 @@ textarea{border-radius:26px!important}
     <div id="gd-match-badges" class="match-badges"></div>
     <h3 style="margin-top:22px;font-size:1.1rem">Members</h3>
     <div class="members" id="gd-members-list" style="margin-top:8px"></div>
+    <div id="gd-interests-section" style="margin-top:22px">
+      <h3 style="font-size:1.1rem;margin-bottom:6px">Your Interests</h3>
+      <p class="meta" style="margin-bottom:8px">Select interests you bring to this group (pick at least 2):</p>
+      <div class="chips" id="gd-chips"></div>
+    </div>
     <div id="gd-action-area" style="margin-top:24px"></div>
   </div>
 </section>
@@ -293,10 +332,20 @@ textarea{border-radius:26px!important}
   <div id="ws-booking-banner" class="glass booking-banner hidden"></div>
 
   <div class="glass panel">
-    <div class="ws-head">
-      <div><h2 id="ws-group-name">Group</h2><p class="meta" id="ws-group-details"></p></div>
-      <div id="ws-lock-area">
-        <button id="btn-lock" class="btn" onclick="showBookingModal()">Lock booking</button>
+    <div class="ws-head" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <h2 id="ws-group-name" style="margin:0">Group</h2>
+          <span id="ws-role-badge" class="role-pill owner">owner</span>
+        </div>
+        <p class="meta" id="ws-group-details" style="margin-top:6px"></p>
+      </div>
+      <div id="ws-actions-area" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="btn-edit-group" class="btn btn-outline sm" onclick="openEditGroupModal()">✏️ Edit Group</button>
+        <button id="btn-delete-group" class="btn btn-danger sm" onclick="confirmDeleteGroup()">🗑️ Delete Group</button>
+        <div id="ws-lock-area">
+          <button id="btn-lock" class="btn sm" onclick="showBookingModal()">Lock booking</button>
+        </div>
       </div>
     </div>
     <p class="meta" style="margin-top:22px"><b id="ws-member-count">0</b> of <b id="ws-max-size">0</b> travellers joined</p>
@@ -307,6 +356,59 @@ textarea{border-radius:26px!important}
   <h2 class="sec-title">Stays and cost split</h2>
   <div id="ws-hotels-container" class="list"></div>
 </section>
+
+<!-- EDIT GROUP MODAL -->
+<div id="edit-group-modal" class="modal-overlay hidden" onclick="closeEditModalOutside(event)">
+  <div class="glass modal" style="max-width:540px;text-align:left">
+    <h2 style="margin-bottom:14px">Edit Group Details</h2>
+    <form id="edit-group-form" onsubmit="saveGroupEdits(event)">
+      <div style="display:grid;gap:12px">
+        <div>
+          <label class="f" for="eg-name">Group name</label>
+          <input id="eg-name" required>
+        </div>
+        <div class="grid">
+          <div>
+            <label class="f" for="eg-city">Destination</label>
+            <select id="eg-city" class="city">
+              <option value="Tokyo">Tokyo (Japan)</option>
+              <option value="Kyoto">Kyoto (Japan)</option>
+              <option value="Osaka">Osaka (Japan)</option>
+              <option value="Dubai">Dubai (United Arab Emirates)</option>
+              <option value="Abu Dhabi">Abu Dhabi (United Arab Emirates)</option>
+            </select>
+          </div>
+          <div>
+            <label class="f" for="eg-size">Max group size</label>
+            <input type="number" id="eg-size" required min="2">
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <label class="f" for="eg-in">Check-in</label>
+            <input type="date" id="eg-in" required min="2027-04-01" max="2027-04-20">
+          </div>
+          <div>
+            <label class="f" for="eg-out">Check-out</label>
+            <input type="date" id="eg-out" required min="2027-04-01" max="2027-04-20">
+          </div>
+        </div>
+        <div>
+          <label class="f" for="eg-budget">Budget (₹)</label>
+          <input type="number" id="eg-budget" required>
+        </div>
+        <div>
+          <label class="f" for="eg-itinerary">Itinerary</label>
+          <textarea id="eg-itinerary" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:20px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline sm" onclick="closeEditGroupModal()">Cancel</button>
+        <button type="submit" class="btn btn-sage sm">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- BOOKING CONFIRMATION MODAL -->
 <div id="booking-modal" class="modal-overlay hidden" onclick="closeModalOutside(event)">
@@ -331,7 +433,15 @@ textarea{border-radius:26px!important}
 /* Themed dropdowns: replaces the browser's native select list */
 (function(){
   function enhance(s){
-    if(s.dataset.dd) return; s.dataset.dd=1;
+    if(!s) return;
+    var existing = s.nextElementSibling;
+    if(existing && existing.classList && existing.classList.contains('dd')){
+      existing.remove();
+    }
+    s.dataset.dd = 1;
+    if(!s.options || s.options.length === 0) return;
+    if(s.selectedIndex < 0) s.selectedIndex = 0;
+
     var wrap=document.createElement('div'); wrap.className='dd';
     var btn=document.createElement('button'); btn.type='button'; btn.className='dd-btn'; btn.id=s.id+'-btn';
     btn.setAttribute('aria-haspopup','listbox'); btn.setAttribute('aria-expanded','false');
@@ -339,7 +449,11 @@ textarea{border-radius:26px!important}
     Array.prototype.forEach.call(s.options,function(o,i){var li=document.createElement('li');li.setAttribute('role','option');li.dataset.i=i;li.textContent=o.text;menu.appendChild(li);});
     var items=[].slice.call(menu.children), act=s.selectedIndex;
     function isOpen(){return wrap.classList.contains('open')}
-    function paint(){btn.textContent=s.options[s.selectedIndex].text;items.forEach(function(li,i){li.setAttribute('aria-selected',i===s.selectedIndex);li.classList.toggle('act',i===act)})}
+    function paint(){
+      var selOpt = s.options[s.selectedIndex] || s.options[0];
+      btn.textContent = selOpt ? selOpt.text : 'Select destination';
+      items.forEach(function(li,i){li.setAttribute('aria-selected',i===s.selectedIndex);li.classList.toggle('act',i===act)});
+    }
     function close(){wrap.classList.remove('open');btn.setAttribute('aria-expanded','false')}
     function open(){act=s.selectedIndex;paint();wrap.classList.add('open');btn.setAttribute('aria-expanded','true')}
     function pick(i){s.selectedIndex=i;s.dispatchEvent(new Event('change'));act=i;close();paint();btn.focus()}
