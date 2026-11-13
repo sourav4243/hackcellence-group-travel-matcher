@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>Travel Matcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F0EEE6;--box:#E3E8DC;--ink:#1F2A24;--sage:#6B8F71;--sage-d:#4a6e50;--clay:#D97757;--clay-d:#a84f30;--txt:#1F2A24;--mute:#1F2A24;
+--glass:rgba(227,232,220,.58);--edge:rgba(255,255,255,.9);--r:34px}
+*{box-sizing:border-box;margin:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--txt);background:var(--bg);min-height:100vh;overflow-x:hidden}
+h1,h2,h3,.disp{font-family:'Bricolage Grotesque','DM Sans',sans-serif;letter-spacing:-.02em}
+/* liquid background */
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;background:radial-gradient(120% 90% at 50% 110%,var(--box),var(--bg) 65%)}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.4;animation:drift 22s ease-in-out infinite alternate}
+.b1{width:46vw;height:46vw;background:var(--sage);left:-10vw;top:-8vw}
+.b2{width:38vw;height:38vw;background:#c9d5c4;right:-8vw;top:18vh;animation-delay:-7s;opacity:.8}
+.b3{width:42vw;height:42vw;background:#9db5a0;left:25vw;bottom:-18vw;animation-delay:-13s;opacity:.5}
+@keyframes drift{to{transform:translate(8vw,6vh) scale(1.18) rotate(30deg)}}
+/* glass */
+.glass{position:relative;background:var(--glass);border-radius:var(--r);
+backdrop-filter:blur(22px) saturate(1.8);-webkit-backdrop-filter:blur(22px) saturate(1.8);
+border:1px solid rgba(255,255,255,.55);
+box-shadow:inset 0 1.5px 0 var(--edge),inset 0 -1px 0 rgba(31,42,36,.06),inset 0 0 40px rgba(255,255,255,.25),0 24px 50px -22px rgba(31,42,36,.35)}
+.glass:focus-within{z-index:5}nav.glass:focus-within{z-index:20}
+.hidden{display:none!important}
+/* nav */
+nav{position:sticky;top:12px;z-index:20;margin:12px auto 0;max-width:1080px;width:calc(100% - 24px);display:flex;justify-content:space-between;align-items:center;padding:12px 22px;border-radius:999px}
+.logo{font-weight:800;font-size:1.25rem;display:flex;gap:10px;align-items:center;cursor:pointer}
+.logo i{width:26px;height:26px;border-radius:50%;background:var(--sage);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+#nav-user{display:flex;align-items:center;gap:12px;font-size:.9rem}
+.pill{padding:6px 14px;border-radius:999px;background:rgba(31,42,36,.06);border:1px solid rgba(31,42,36,.14)}
+main{max-width:1080px;margin:0 auto;padding:36px 16px 80px}
+/* hero */
+.hero{text-align:left;margin:30px 0 28px;max-width:760px}
+.hero h1{font-size:clamp(2.4rem,6.5vw,4.6rem);font-weight:800;line-height:1.02}
+.hero p{margin-top:16px;color:var(--mute);font-size:1.1rem;max-width:520px}
+/* forms */
+.panel{padding:28px}
+.panel h2{font-size:1.5rem;margin-bottom:18px}
+.tabs{display:inline-flex;padding:5px;border-radius:999px;margin-bottom:20px;gap:4px}
+.tab{border:0;background:none;color:var(--mute);font:700 .95rem 'DM Sans';padding:10px 22px;border-radius:999px;cursor:pointer;transition:.25s}
+.tab.on{background:#fff;color:var(--ink);box-shadow:0 6px 16px rgba(31,42,36,.18)}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+label.f{display:block;font-size:.8rem;color:var(--mute);margin-bottom:6px}
+input,select,textarea{width:100%;padding:14px 22px;border-radius:999px;border:1px solid rgba(31,42,36,.18);background:rgba(255,255,255,.55);color:var(--txt);font:500 1rem 'DM Sans';outline:0;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+input::placeholder,textarea::placeholder{color:rgba(31,42,36,.55)}
+.dd{position:relative}
+.dd-btn{position:relative;width:100%;text-align:left;padding:14px 52px 14px 22px;border-radius:999px;border:1px solid rgba(31,42,36,.18);background:rgba(255,255,255,.55);color:var(--txt);font:500 1rem 'DM Sans';cursor:pointer;outline:0;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.dd-btn::after{content:"";position:absolute;right:28px;top:50%;width:8px;height:8px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.dd.open .dd-btn::after{transform:translateY(-25%) rotate(-135deg)}
+.dd-btn:focus,.dd.open .dd-btn{border-color:var(--sage);box-shadow:0 0 0 4px rgba(107,143,113,.25);background:#fff}
+.dd-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;list-style:none;margin:0;padding:12px;max-height:260px;overflow:auto;border-radius:32px;background:rgba(240,238,230,.82);backdrop-filter:blur(22px) saturate(1.8);-webkit-backdrop-filter:blur(22px) saturate(1.8);border:1px solid rgba(255,255,255,.6);box-shadow:inset 0 1.5px 0 var(--edge),0 24px 50px -18px rgba(31,42,36,.4)}
+.dd.open .dd-menu{display:block}
+.dd-menu li{padding:11px 18px;border-radius:999px;cursor:pointer;font-weight:500}
+.dd-menu li:hover,.dd-menu li.act{background:rgba(107,143,113,.2)}
+.dd-menu li[aria-selected=true]{background:var(--sage);color:#fff;font-weight:700}
+input:focus,select:focus,textarea:focus{border-color:var(--sage);box-shadow:0 0 0 4px rgba(107,143,113,.25);background:#fff}
+input[type=date]{color-scheme:light}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 4px}
+.chip input{position:absolute;opacity:0;width:0}
+.chip span{display:inline-block;padding:10px 18px;border-radius:999px;border:1px solid rgba(31,42,36,.2);background:rgba(255,255,255,.45);cursor:pointer;transition:.2s;font-weight:500}
+.chip span:hover{background:rgba(255,255,255,.85)}
+.chip input:checked+span{background:var(--sage);color:#fff;border-color:transparent;font-weight:700;box-shadow:0 8px 20px -6px rgba(107,143,113,.8)}
+.chip input:focus-visible+span{outline:2px solid var(--ink);outline-offset:2px}
+.btn{border:0;cursor:pointer;font:700 1rem 'DM Sans';padding:15px 26px;border-radius:999px;color:var(--ink);background:linear-gradient(135deg,#e58b6c,var(--clay));box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 14px 28px -10px rgba(217,119,87,.7);transition:transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px) scale(1.02)}
+.btn.full{width:100%;margin-top:16px}
+.btn.sm{padding:10px 20px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-sage{background:linear-gradient(135deg,#8db993,var(--sage));color:#fff;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 14px 28px -10px rgba(107,143,113,.7)}
+.btn-outline{background:transparent;color:var(--sage-d);border:2px solid var(--sage);box-shadow:none}
+.btn-outline:hover{background:rgba(107,143,113,.1)}
+.btn-danger{background:linear-gradient(135deg,#e07070,#c94040);color:#fff;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 14px 28px -10px rgba(201,64,64,.5)}
+.link{background:none;border:0;color:var(--sage-d);font:700 .95rem 'DM Sans';cursor:pointer;margin-bottom:18px}
+/* results */
+.sec-title{font-size:1.5rem;margin:34px 0 14px}
+.list{display:grid;gap:16px}
+.card{display:grid;grid-template-columns:150px 1fr auto;gap:20px;align-items:center;padding:18px;cursor:pointer;transition:transform .2s}
+.card:hover{transform:translateY(-2px)}
+.thumb{height:110px;border-radius:26px;display:grid;place-items:end start;padding:10px;font-weight:800;font-size:1.1rem;color:#fff;text-shadow:0 1px 6px rgba(31,42,36,.35);background:linear-gradient(135deg,var(--sage),var(--clay));box-shadow:inset 0 1px 0 rgba(255,255,255,.5);overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:26px}
+.thumb{position:relative}
+.card h3{font-size:1.3rem}
+.meta{color:var(--mute);font-size:.9rem;margin-top:4px}
+.tag{display:inline-block;margin:10px 8px 0 0;padding:5px 12px;border-radius:999px;font-size:.8rem;background:rgba(107,143,113,.18);color:var(--sage-d);border:1px solid rgba(107,143,113,.4)}
+.tag.o{background:rgba(217,119,87,.16);color:var(--clay-d);border-color:rgba(217,119,87,.4)}
+.score{display:inline-grid;place-items:center;min-width:42px;height:42px;border-radius:14px 14px 14px 4px;background:var(--sage-d);color:#fff;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+.price{text-align:right}.price b{font-size:1.6rem;font-family:'Bricolage Grotesque'}
+.empty{padding:34px;text-align:center;color:var(--mute)}
+/* workspace */
+.ws-head{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.ws-head h2{font-size:clamp(1.8rem,4vw,2.8rem);margin:0}
+.members{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.av{display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:999px;background:rgba(255,255,255,.55);border:1px solid rgba(31,42,36,.12);font-size:.9rem}
+.av i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:800;color:#fff;background:var(--sage)}
+.bar{height:8px;border-radius:9px;background:rgba(31,42,36,.1);margin-top:14px;overflow:hidden;max-width:360px}
+.bar b{display:block;height:100%;background:linear-gradient(90deg,var(--sage),var(--clay));border-radius:9px;transition:width .8s cubic-bezier(.2,.9,.3,1)}
+.hotel{grid-template-columns:130px 1fr auto}
+.hotel .thumb{height:110px;background:linear-gradient(135deg,#9db5a0,var(--sage))}
+/* toast */
+#alert-box{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:50;padding:14px 26px;border-radius:999px;font-weight:700;background:rgba(74,110,80,.96);color:#fff;backdrop-filter:blur(14px);box-shadow:0 18px 40px rgba(31,42,36,.3);animation:pop .4s cubic-bezier(.2,1.4,.4,1)}
+#alert-box.err{background:rgba(217,119,87,.96);color:var(--ink)}
+@keyframes pop{from{transform:translate(-50%,-20px) scale(.9);opacity:0}}
+.signup{max-width:620px;margin:0 auto}
+
+/* My Groups cards */
+.my-groups-section{margin-bottom:32px}
+.my-groups-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));margin-top:14px}
+.group-card{padding:22px;cursor:pointer;transition:transform .2s}
+.group-card:hover{transform:translateY(-3px)}
+.group-card h3{font-size:1.15rem;margin-bottom:6px}
+.group-card .meta{margin-top:0}
+.group-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;border-radius:999px;background:#e04040;color:#fff;font-size:.75rem;font-weight:800;padding:0 7px;box-shadow:0 4px 12px rgba(224,64,64,.4)}
+.role-pill{padding:4px 12px;border-radius:999px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.role-pill.owner{background:rgba(217,119,87,.2);color:var(--clay-d)}
+.role-pill.member{background:rgba(107,143,113,.2);color:var(--sage-d)}
+
+/* Group detail */
+.detail-header{margin-bottom:8px}
+.detail-header h2{font-size:clamp(1.6rem,4vw,2.4rem);margin-bottom:6px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+.detail-item label{display:block;font-size:.75rem;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.detail-item span{font-weight:700;font-size:1rem}
+.detail-itinerary{margin-top:18px;padding:18px;border-radius:22px;background:rgba(255,255,255,.35);border:1px solid rgba(31,42,36,.1);white-space:pre-wrap;line-height:1.6}
+.match-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+
+/* Request cards */
+.request-card{padding:22px;margin-bottom:16px}
+.request-card h3{margin-bottom:4px}
+.request-card .meta{margin-bottom:10px}
+.request-actions{display:flex;gap:10px;margin-top:16px}
+
+/* Hotel cards */
+.hotel-card{padding:0;overflow:hidden}
+.hotel-card-inner{display:grid;grid-template-columns:150px 1fr auto;gap:20px;align-items:center;padding:18px}
+.hotel-img{width:150px;height:120px;border-radius:22px;object-fit:cover;box-shadow:0 4px 16px rgba(31,42,36,.15)}
+.hotel-info h3{font-size:1.15rem;margin-bottom:4px}
+.hotel-info .meta{margin-top:2px}
+.hotel-stars{color:#d4a017;font-size:.9rem;letter-spacing:1px}
+.hotel-pricing{text-align:right;white-space:nowrap}
+.hotel-pricing .per-person{font-size:1.5rem;font-weight:800;font-family:'Bricolage Grotesque';color:var(--sage-d)}
+.hotel-pricing .total{font-size:.8rem;color:var(--mute);margin-top:2px}
+.hotel-actions{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+
+/* Booking confirmation */
+.booking-banner{padding:28px;text-align:center;margin-bottom:24px;border:2px solid var(--sage)}
+.booking-banner h2{color:var(--sage-d);margin-bottom:8px}
+.booking-ref{font-size:1.6rem;font-weight:800;font-family:'Bricolage Grotesque';color:var(--clay);margin:12px 0;letter-spacing:.04em}
+.booking-details{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:14px;font-size:.95rem}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(31,42,36,.45);backdrop-filter:blur(8px);animation:fadeIn .25s}
+.modal{max-width:440px;width:calc(100% - 32px);padding:32px;text-align:center}
+.modal h2{font-size:1.4rem;margin-bottom:12px}
+.modal p{color:var(--mute);line-height:1.5;margin-bottom:8px}
+.modal-actions{display:flex;gap:12px;justify-content:center;margin-top:22px}
+@keyframes fadeIn{from{opacity:0}}
+
+/* Shortlist star */
+.star-btn{background:none;border:0;cursor:pointer;font-size:1.4rem;padding:4px;transition:transform .2s}
+.star-btn:hover{transform:scale(1.2)}
+.star-btn.active{color:#d4a017}
+
+@media(max-width:700px){
+  .card,.hotel-card-inner{grid-template-columns:1fr}
+  .thumb,.hotel-img{height:140px;width:100%}
+  .price,.hotel-pricing{text-align:left}
+  .detail-grid{grid-template-columns:1fr}
+  .my-groups-grid{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+textarea{border-radius:26px!important}
+.tabs{border-radius:999px}
+</style>
+</head>
+<body>
+<div class="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<nav class="glass">
+  <div class="logo disp" onclick="goHome()"><i></i>Travel Matcher</div>
+  <div id="nav-user" class="hidden"><span class="pill" id="nav-name"></span><span class="pill" id="nav-traveller-id"></span><button class="link" style="margin:0" onclick="logout()">Log out</button></div>
+</nav>
+
+<div id="alert-box" class="hidden" role="status"></div>
+
+<main>
+<!-- SIGNUP -->
+<section id="view-signup">
+  <div class="hero"><h1>Don't just book a trip. Find your crew.</h1><p>Tell us what you love. We'll match you with travellers heading the same way, on your dates and your budget.</p></div>
+  <form id="signup-form" class="glass panel signup">
+    <h2>Create your profile</h2>
+    <div style="display:grid;gap:14px">
+      <div><label class="f" for="su-name">Full name</label><input id="su-name" required placeholder="Lakshy Sharma"></div>
+      <div class="grid">
+        <div><label class="f" for="su-gender">Gender</label><select id="su-gender"><option value="FEMALE">Female</option><option value="MALE">Male</option></select></div>
+        <div><label class="f" for="su-city">Home city</label><select id="su-city"><option>Bengaluru</option><option>Delhi</option><option>Mumbai</option><option>Chennai</option></select></div>
+      </div>
+      <div><label class="f" for="su-pref">Travel with</label><select id="su-pref"><option value="ANY">Anyone</option><option value="SAME_GENDER">Same gender only</option></select></div>
+      <div><label class="f">Pick at least 2 interests</label>
+        <div class="chips" id="su-chips"></div></div>
+    </div>
+    <button class="btn full" type="submit">Create profile</button>
+  </form>
+</section>
+
+<!-- DASHBOARD -->
+<section id="view-dashboard" class="hidden">
+  <div class="hero"><h1>Where to next? Bring company.</h1><p>Search groups already planning your trip, or post your own and let the right people find you.</p></div>
+
+  <!-- My Groups -->
+  <div id="my-groups-section" class="my-groups-section hidden">
+    <h2 class="sec-title" style="margin-top:0">My Groups</h2>
+    <div id="my-groups-grid" class="my-groups-grid"></div>
+  </div>
+
+  <div class="glass panel">
+    <div class="tabs glass" role="tablist"><button class="tab on" data-tab="search">Find a group</button><button class="tab" data-tab="create">Start a group</button></div>
+
+    <form id="search-form">
+      <div class="grid">
+        <div><label class="f" for="sg-city">Destination</label><select id="sg-city" class="city"></select></div>
+        <div><label class="f" for="sg-in">Check-in</label><input type="date" id="sg-in" required min="2027-04-01" max="2027-04-20"></div>
+        <div><label class="f" for="sg-out">Check-out</label><input type="date" id="sg-out" required min="2027-04-01" max="2027-04-20"></div>
+        <div><label class="f" for="sg-budget">Budget (₹)</label><input type="number" id="sg-budget" required placeholder="60000"></div>
+      </div>
+      <label class="f" style="margin-top:16px">Pick at least 2 interests</label>
+      <div class="chips" id="sg-chips"></div>
+      <button class="btn full" type="submit">Search groups</button>
+    </form>
+
+    <form id="create-form" class="hidden">
+      <div class="grid">
+        <div><label class="f" for="cg-name">Group name</label><input id="cg-name" required placeholder="Tokyo in spring"></div>
+        <div><label class="f" for="cg-city">Destination</label><select id="cg-city" class="city"></select></div>
+        <div><label class="f" for="cg-in">Check-in</label><input type="date" id="cg-in" required min="2027-04-01" max="2027-04-20"></div>
+        <div><label class="f" for="cg-out">Check-out</label><input type="date" id="cg-out" required min="2027-04-01" max="2027-04-20"></div>
+        <div><label class="f" for="cg-size">Group size</label><input type="number" id="cg-size" required min="2" placeholder="4"></div>
+        <div><label class="f" for="cg-budget">Budget per group (₹)</label><input type="number" id="cg-budget" required placeholder="80000"></div>
+      </div>
+      <label class="f" for="cg-itinerary" style="margin-top:14px">Itinerary</label>
+      <textarea id="cg-itinerary" rows="3" placeholder="Day 1: Senso-ji at sunrise, then street food in Asakusa…"></textarea>
+      <button class="btn full" type="submit">Post group</button>
+    </form>
+  </div>
+
+  <div id="search-results" class="hidden"><h2 class="sec-title">Matching groups</h2><div id="results-container" class="list"></div></div>
+</section>
+
+<!-- GROUP DETAIL -->
+<section id="view-group-detail" class="hidden">
+  <button class="link" onclick="showView('dashboard')">← Back to search</button>
+  <div class="glass panel">
+    <div class="detail-header">
+      <h2 id="gd-name"></h2>
+      <p class="meta" id="gd-owner-info"></p>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item"><label>Destination</label><span id="gd-city"></span></div>
+      <div class="detail-item"><label>Dates</label><span id="gd-dates"></span></div>
+      <div class="detail-item"><label>Budget</label><span id="gd-budget"></span></div>
+      <div class="detail-item"><label>Members</label><span id="gd-members-count"></span></div>
+    </div>
+    <div id="gd-itinerary-section">
+      <h3 style="margin-top:22px;font-size:1.1rem">Itinerary</h3>
+      <div class="detail-itinerary" id="gd-itinerary"></div>
+    </div>
+    <div id="gd-match-badges" class="match-badges"></div>
+    <h3 style="margin-top:22px;font-size:1.1rem">Members</h3>
+    <div class="members" id="gd-members-list" style="margin-top:8px"></div>
+    <div id="gd-action-area" style="margin-top:24px"></div>
+  </div>
+</section>
+
+<!-- MANAGE REQUESTS -->
+<section id="view-manage-requests" class="hidden">
+  <button class="link" onclick="showView('dashboard')">← Back to dashboard</button>
+  <div class="glass panel">
+    <h2 id="mr-title">Pending Requests</h2>
+    <p class="meta" id="mr-subtitle"></p>
+    <div id="mr-requests-list" style="margin-top:22px"></div>
+  </div>
+</section>
+
+<!-- WORKSPACE -->
+<section id="view-workspace" class="hidden">
+  <button class="link" onclick="showView('dashboard')">← Back to dashboard</button>
+
+  <div id="ws-booking-banner" class="glass booking-banner hidden"></div>
+
+  <div class="glass panel">
+    <div class="ws-head">
+      <div><h2 id="ws-group-name">Group</h2><p class="meta" id="ws-group-details"></p></div>
+      <div id="ws-lock-area">
+        <button id="btn-lock" class="btn" onclick="showBookingModal()">Lock booking</button>
+      </div>
+    </div>
+    <p class="meta" style="margin-top:22px"><b id="ws-member-count">0</b> of <b id="ws-max-size">0</b> travellers joined</p>
+    <div class="bar"><b id="ws-bar" style="width:0"></b></div>
+    <div class="members" id="ws-members-list"></div>
+  </div>
+
+  <h2 class="sec-title">Stays and cost split</h2>
+  <div id="ws-hotels-container" class="list"></div>
+</section>
+
+<!-- BOOKING CONFIRMATION MODAL -->
+<div id="booking-modal" class="modal-overlay hidden" onclick="closeModalOutside(event)">
+  <div class="glass modal" id="booking-modal-content">
+    <h2>Confirm Booking</h2>
+    <p id="modal-hotel-info">Are you sure you want to lock this booking for the group?</p>
+    <div id="modal-selected-hotel" style="margin:12px 0;padding:12px;border-radius:18px;background:rgba(107,143,113,.1);text-align:left" class="hidden">
+      <strong id="modal-hotel-name"></strong>
+      <p class="meta" id="modal-room-name"></p>
+      <p style="font-weight:700;margin-top:6px" id="modal-cost-info"></p>
+    </div>
+    <p style="font-size:.85rem;color:var(--mute)">This action locks the group. No new members can join after booking.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-sage sm" onclick="confirmBooking()">Confirm & Lock</button>
+    </div>
+  </div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+/* Themed dropdowns: replaces the browser's native select list */
+(function(){
+  function enhance(s){
+    if(s.dataset.dd) return; s.dataset.dd=1;
+    var wrap=document.createElement('div'); wrap.className='dd';
+    var btn=document.createElement('button'); btn.type='button'; btn.className='dd-btn'; btn.id=s.id+'-btn';
+    btn.setAttribute('aria-haspopup','listbox'); btn.setAttribute('aria-expanded','false');
+    var menu=document.createElement('ul'); menu.className='dd-menu'; menu.setAttribute('role','listbox');
+    Array.prototype.forEach.call(s.options,function(o,i){var li=document.createElement('li');li.setAttribute('role','option');li.dataset.i=i;li.textContent=o.text;menu.appendChild(li);});
+    var items=[].slice.call(menu.children), act=s.selectedIndex;
+    function isOpen(){return wrap.classList.contains('open')}
+    function paint(){btn.textContent=s.options[s.selectedIndex].text;items.forEach(function(li,i){li.setAttribute('aria-selected',i===s.selectedIndex);li.classList.toggle('act',i===act)})}
+    function close(){wrap.classList.remove('open');btn.setAttribute('aria-expanded','false')}
+    function open(){act=s.selectedIndex;paint();wrap.classList.add('open');btn.setAttribute('aria-expanded','true')}
+    function pick(i){s.selectedIndex=i;s.dispatchEvent(new Event('change'));act=i;close();paint();btn.focus()}
+    btn.onclick=function(){isOpen()?close():open()};
+    menu.onclick=function(e){var li=e.target.closest('li');if(li)pick(+li.dataset.i)};
+    btn.onkeydown=function(e){
+      if(e.key==='Escape'||e.key==='Tab')return close();
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(!isOpen())return open();act=(act+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;paint()}
+      if(e.key==='Enter'&&isOpen()){e.preventDefault();pick(act)}
+    };
+    document.addEventListener('click',function(e){if(!wrap.contains(e.target))close()});
+    var lab=document.querySelector('label[for="'+s.id+'"]'); if(lab)lab.htmlFor=btn.id;
+    s.hidden=true; s.after(wrap); wrap.appendChild(btn); wrap.appendChild(menu); paint();
+  }
+  window.enhanceSelect = enhance;
+  document.querySelectorAll('select').forEach(enhance);
+})();
+</script>
+</body>
+</html>
