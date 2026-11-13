@@ -136,8 +136,8 @@ def search_groups(req: SearchRequest):
     except Exception:
         pass
 
-    # rule 1: same destination & not locked
-    potential_groups = cursor.execute("SELECT * FROM groups WHERE LOWER(TRIM(city)) = LOWER(TRIM(?)) AND is_locked = 0", (req.city,)).fetchall()
+    # rule 1: same destination & not locked, exclude groups owned by the seeker
+    potential_groups = cursor.execute("SELECT * FROM groups WHERE LOWER(TRIM(city)) = LOWER(TRIM(?)) AND is_locked = 0 AND owner_id != ?", (req.city, req.traveller_id)).fetchall()
     matches = []
     
     seeker_in = datetime.strptime(req.check_in, "%Y-%m-%d")
