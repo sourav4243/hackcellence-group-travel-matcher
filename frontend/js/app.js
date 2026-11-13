@@ -1,18 +1,50 @@
 const API_BASE = 'http://localhost:8000/api';
 let currentTravellerId = localStorage.getItem('travellerId');
 let currentGroupId = localStorage.getItem('groupId');
+let allInterests = [];
 
-const INTERESTS = [['TEMPLES','Temples'],['STREET_FOOD','Street food'],['NATURE','Nature'],['HIKING','Hiking'],['PHOTOGRAPHY','Photography']];
-const CITIES = ['Tokyo','Kyoto','Osaka','Dubai','Abu Dhabi'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const checked = name => [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(c => c.value);
 
-// Build chips and city lists
-const chipHTML = name => INTERESTS.map(([v, l]) => `<label class="chip"><input type="checkbox" name="${name}" value="${v}"><span>${l}</span></label>`).join('');
-$('su-chips').innerHTML = chipHTML('interest');
-$('sg-chips').innerHTML = chipHTML('sg-interest');
-document.querySelectorAll('.city').forEach(s => s.innerHTML = CITIES.map(c => `<option>${c}</option>`).join(''));
+// Load interests from backend and build chips
+async function loadInterestsAndCities() {
+  try {
+    const res = await fetch(API_BASE + '/interests');
+    const data = await res.json();
+    allInterests = data.interests || [];
+  } catch {
+    allInterests = [
+      {interest:'TEMPLES',label:'Temples and shrines'},{interest:'MUSEUMS',label:'Museums and galleries'},
+      {interest:'STREET_FOOD',label:'Street food and markets'},{interest:'HIKING',label:'Hiking'},
+      {interest:'PHOTOGRAPHY',label:'Photography'},{interest:'NATURE',label:'Parks and gardens'}
+    ];
+  }
+  // Render chips ONLY for search and create (NOT signup)
+  const chipHTML = name => allInterests.map(i =>
+    `<label class="chip"><input type="checkbox" name="${name}" value="${i.interest}"><span>${esc(i.label)}</span></label>`
+  ).join('');
+  if ($('sg-chips')) $('sg-chips').innerHTML = chipHTML('sg-interest');
+  if ($('cg-chips')) $('cg-chips').innerHTML = chipHTML('cg-interest');
+
+  // Load destinations from backend
+  try {
+    const dRes = await fetch(API_BASE + '/destinations');
+    const dData = await dRes.json();
+    const cities = (dData.destinations || []).map(d => d.name);
+    document.querySelectorAll('.city').forEach(s =>
+      s.innerHTML = cities.map(c => `<option>${c}</option>`).join('')
+    );
+  } catch {
+    const CITIES = ['Tokyo','Kyoto','Osaka','Dubai','Abu Dhabi'];
+    document.querySelectorAll('.city').forEach(s =>
+      s.innerHTML = CITIES.map(c => `<option>${c}</option>`).join('')
+    );
+  }
+}
+
+// Boot
+loadInterestsAndCities();
 
 // UI helpers
 function showAlert(message, isError = false) {
@@ -61,14 +93,12 @@ if (currentTravellerId) {
 
 function logout() { localStorage.clear(); location.reload(); }
 
-// M1: Sign up
+// M1: Sign up (NO interests at signup)
 $('signup-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const interests = checked('interest');
-  if (interests.length < 2) return showAlert('Pick at least 2 interests.', true);
   const { ok, data } = await api('/users/signup', 'POST', {
     name: $('su-name').value, gender: $('su-gender').value, home_city: $('su-city').value,
-    gender_preference: $('su-pref').value, interests
+    gender_preference: $('su-pref').value, interests: []
   });
   if (!ok) return showAlert(errMsg(data), true);
   currentTravellerId = data.traveller_id;
@@ -131,7 +161,7 @@ async function joinGroup(groupId) {
   loadWorkspace(groupId);
 }
 
-// M6: Workspace + hotels
+// M6: Workspace + hotels (with real images)
 async function loadWorkspace(groupId) {
   currentGroupId = groupId;
   localStorage.setItem('groupId', groupId);
@@ -154,16 +184,25 @@ async function loadWorkspace(groupId) {
   const h = await api(`/groups/${groupId}/hotels`);
   const box = $('ws-hotels-container');
   if (h.data.options && h.data.options.length) {
-    box.innerHTML = h.data.options.map(o => `
+    const imgBase = API_BASE.replace('/api', '');
+    box.innerHTML = h.data.options.map(o => {
+      const imgSrc = o.image ? `${imgBase}/${o.image}` : '';
+      const stars = '★'.repeat(o.stars || 0) + '☆'.repeat(5 - (o.stars || 0));
+      return `
       <article class="glass card hotel">
-        <div class="thumb">${esc(o.hotel_name.charAt(0))}</div>
+        <div class="thumb" style="position:relative;overflow:hidden">
+          ${imgSrc ? `<img src="${imgSrc}" alt="${esc(o.hotel_name)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:26px" onerror="this.style.display='none'">` : ''}
+          <span style="position:relative;z-index:1">${esc(o.hotel_name.charAt(0))}</span>
+        </div>
         <div>
           <h3>${esc(o.hotel_name)}</h3>
-          <p class="meta">${esc(o.room_name)} · Total stay ₹${o.total_cost_inr.toLocaleString()}</p>
+          <p class="meta">${esc(o.room_name)} · ${esc(o.area || '')} · Total stay ₹${o.total_cost_inr.toLocaleString()}</p>
+          <div style="color:#d4a017;font-size:.9rem;letter-spacing:1px">${stars}</div>
           <span class="score">${esc(o.rating)}</span>
         </div>
         <div class="price"><b>₹${o.per_person_inr.toLocaleString()}</b><p class="meta">per person</p></div>
-      </article>`).join('');
+      </article>`;
+    }).join('');
   } else {
     box.innerHTML = '<div class="glass empty">No rooms fit your group size on these dates. Try changing the dates or the group size.</div>';
   }
