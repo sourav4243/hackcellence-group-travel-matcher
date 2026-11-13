@@ -788,12 +788,6 @@ async function openWorkspace(groupId) {
       roleBadge.className = 'role-pill ' + (isOwner ? 'owner' : 'member');
     }
 
-    const btnEdit = document.getElementById('btn-edit-group');
-    if (btnEdit) btnEdit.style.display = isOwner ? 'inline-block' : 'none';
-
-    const btnDel = document.getElementById('btn-delete-group');
-    if (btnDel) btnDel.style.display = isOwner ? 'inline-block' : 'none';
-
     document.getElementById('ws-group-name').textContent = group.name;
     document.getElementById('ws-group-details').textContent =
       '📍 ' + group.city + ' · ' + group.check_in + ' → ' + group.check_out + ' · ₹' + fmt(group.budget_inr);
@@ -816,11 +810,18 @@ async function openWorkspace(groupId) {
       ml.appendChild(av);
     });
 
+    // Owner-only action buttons — show/hide based on role & lock state
+    const btnEdit = document.getElementById('btn-edit-group');
+    const btnDel  = document.getElementById('btn-delete-group');
+    if (btnEdit) btnEdit.style.display = isOwner && !group.is_locked ? '' : 'none';
+    if (btnDel)  btnDel.style.display  = isOwner ? '' : 'none';
+
     if (group.is_locked) {
       showBookingConfirmation(group, isOwner);
     } else {
+      // Consistent "Lock Booking" button — sage coloured, matches other action buttons
       document.getElementById('ws-lock-area').innerHTML =
-        '<button id="btn-lock" class="btn sm" onclick="showBookingModal()">Lock booking</button>';
+        '<button id="btn-lock" class="btn btn-sage sm" onclick="showBookingModal()">🔒 Lock Booking</button>';
     }
 
     loadHotels(groupId);
@@ -976,6 +977,15 @@ async function confirmBooking() {
 function showBookingConfirmation(group, isOwner = false) {
   const banner = document.getElementById('ws-booking-banner');
   const bookingId = group.booking_id || 'BKG-' + group.group_id;
+
+  // Build cost info line from selectedHotel (if available)
+  let costLine = '';
+  if (selectedHotel && selectedHotel.per_person) {
+    costLine = `<span>💰 ₹${fmt(selectedHotel.per_person)} per person</span>`;
+  } else if (group.per_person_inr) {
+    costLine = `<span>💰 ₹${fmt(group.per_person_inr)} per person</span>`;
+  }
+
   banner.classList.remove('hidden');
   banner.innerHTML = `
     <h2>🎉 Booking Confirmed!</h2>
@@ -986,16 +996,26 @@ function showBookingConfirmation(group, isOwner = false) {
       ${group.booked_room ? `<span>🛏️ ${esc(group.booked_room)}</span>` : ''}
       <span>📍 ${esc(group.city)}</span>
       <span>📅 ${group.check_in} → ${group.check_out}</span>
-    </div>
-    <div style="margin-top:16px">
-      <button class="btn btn-outline sm" onclick="unlockGroup('${group.group_id}')" title="Unlock group to pick another stay or edit details">🔓 Unlock Group</button>
+      ${costLine}
     </div>
   `;
 
+  // Lock area: just a locked badge + single unlock button (no duplicate in banner)
   document.getElementById('ws-lock-area').innerHTML = `
-    <span class="tag" style="font-size:.9rem;padding:6px 14px;background:rgba(107,143,113,.2);color:var(--sage-d);font-weight:700">🔒 Locked</span>
+    <span class="tag" style="font-size:.9rem;padding:8px 18px;background:rgba(107,143,113,.2);color:var(--sage-d);font-weight:700;border:1.5px solid var(--sage)">🔒 Booking Locked</span>
     <button class="btn btn-outline sm" onclick="unlockGroup('${group.group_id}')" style="margin-left:8px">🔓 Unlock</button>
   `;
+
+  // Hide the hotels list — booking is done, no need to show other options
+  const hotelsContainer = document.getElementById('ws-hotels-container');
+  if (hotelsContainer) {
+    hotelsContainer.innerHTML = `
+      <div class="glass empty" style="padding:28px;text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <p style="font-weight:700;margin-bottom:4px">Group booking is locked in!</p>
+        <p class="meta">Unlock the group above if you need to change the hotel selection.</p>
+      </div>`;
+  }
 }
 
 // ── Unlock, Edit & Delete Group Actions ─────────────────────────
