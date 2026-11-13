@@ -9,10 +9,10 @@ Make sure you are in the root folder of the project, then run:
 # Create the virtual environment
 python3 -m venv venv
 
-# Activate it on Linux/macOS (For Sourav):
+# Activate it on Linux/macOS:
 source venv/bin/activate
 
-# Activate it on Windows (For Lakshy):
+# Activate it on Windows:
 venv\Scripts\activate
 ```
 
