@@ -2,6 +2,10 @@ from fastapi import APIRouter, HTTPException
 import sqlite3
 import uuid
 from datetime import datetime
+import os
+import json
+
+BASE_DIR = os.path.dirname(__file__)
 
 # import our decoupled schemas
 from schema import SignupRequest, GroupCreateRequest, SearchRequest
@@ -36,6 +40,7 @@ def signup(req: SignupRequest):
         conn.close()
 
     return {"message": "Signup successful", "traveller_id": traveller_id}
+
 
 # M2: Create Group Post
 @router.post("/api/groups")
@@ -126,3 +131,27 @@ def search_groups(req: SearchRequest):
     conn.close()
     matches.sort(key=lambda x: (x["shared_interests_count"], x["shared_nights"]), reverse=True)
     return {"matches": matches}
+
+
+# interests List
+@router.get("/api/interests")
+def get_interests():
+    interests_path = os.path.join(BASE_DIR, "..", "..", "data", "problem-3", "interests.json")
+    with open(interests_path, "r") as f:
+        interests = json.load(f)
+    return {"interests": interests}
+
+# destinations list
+def get_destinations():
+    dest_path = os.path.join(BASE_DIR, "..", "..", "data", "catalog", "destinations.json")
+    with open(dest_path, "r") as f:
+        data = json.load(f)
+    cities = []
+    for country in data.get("countries", []):
+        for city in country.get("cities", []):
+            cities.append({
+                "name": city["name"],
+                "country": country["name"],
+                "country_code": country["code"]
+            })
+    return {"destinations": cities}

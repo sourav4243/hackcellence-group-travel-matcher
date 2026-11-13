@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 # m1: sign up
 class SignupRequest(BaseModel):
@@ -33,3 +33,7 @@ class SearchRequest(BaseModel):
 # join group
 class JoinRequest(BaseModel):
     traveller_id: str
+
+class BookRequest(BaseModel):
+    hotel_name: Optional[str] = None
+    room_name: Optional[str] = None

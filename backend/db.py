@@ -39,7 +39,9 @@ def init_db():
             max_size INTEGER,
             budget_inr INTEGER,
             itinerary TEXT,
-            is_locked BOOLEAN DEFAULT 0
+            is_locked BOOLEAN DEFAULT 0,
+            booked_hotel TEXT,
+            booked_room TEXT
         )
     ''')
 
@@ -51,6 +53,15 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS join_requests (
+            request_id TEXT PRIMARY KEY,
+            group_id TEXT,
+            traveller_id TEXT,
+            status TEXT DEFAULT 'PENDING',
+            created_at TEXT
+        )
+    ''')
 
     # seed data if empty
     cursor.execute("SELECT COUNT(*) FROM travellers")

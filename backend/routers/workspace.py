@@ -4,11 +4,13 @@ import json
 import math
 from datetime import datetime, timedelta
 import os
+import uuid
 
-from schema import JoinRequest
+from schema import JoinRequest, BookRequest
 
 router = APIRouter()
 DB_FILE = "hackathon.db"
+BASE_DIR = os.path.dirname(__file__)
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
@@ -27,32 +29,82 @@ def join_group(group_id: str, req: JoinRequest):
         
     member_count = cursor.execute("SELECT COUNT(*) FROM group_members WHERE group_id = ?", (group_id,)).fetchone()[0]
     if member_count >= group["max_size"]: raise HTTPException(status_code=400, detail="Group is full")
-        
-    try:
-        cursor.execute("INSERT INTO group_members (group_id, traveller_id) VALUES (?, ?)", (group_id, req.traveller_id))
-        conn.commit()
-    except sqlite3.IntegrityError:
+
+    if cursor.execute("SELECT 1 FROM group_members WHERE group_id = ? AND traveller_id = ?", (group_id, req.traveller_id)).fetchone():
         raise HTTPException(status_code=400, detail="User already in group")
+
+    if cursor.execute("SELECT 1 FROM join_requests WHERE group_id = ? AND traveller_id = ? AND status = 'PENDING'", (group_id, req.traveller_id)).fetchone():
+        raise HTTPException(status_code=400, detail="Join request already pending")
+
+    request_id = f"JR-{str(uuid.uuid4())[:6].upper()}"
+    try:
+        cursor.execute("INSERT INTO join_requests (request_id, group_id, traveller_id, status, created_at) VALUES (?, ?, ?, 'PENDING', ?)",
+            (request_id, group_id, req.traveller_id, datetime.utcnow().isoformat()))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
         
-    return {"message": "Joined successfully!"}
+    return {"message": "Join request sent!", "request_id": request_id}
+
+# M5: get pending join requests
+@router.get("/api/groups/{group_id}/requests")
+def get_join_requests(group_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    requests = cursor.execute("SELECT * FROM join_requests WHERE group_id = ? AND status = 'PENDING'", (group_id,)).fetchall()
+    
+    result = []
+    for r in requests:
+        traveller = cursor.execute("SELECT * FROM travellers WHERE traveller_id = ?", (r["traveller_id"],)).fetchone()
+        interests_rows = cursor.execute("SELECT interest_id FROM traveller_interests WHERE traveller_id = ?", (r["traveller_id"],)).fetchall()
+        profile = dict(traveller) if traveller else {}
+        profile["interests"] = [row["interest_id"] for row in interests_rows]
+        result.append({"request_id": r["request_id"], "group_id": r["group_id"], "traveller_id": r["traveller_id"], "status": r["status"], "profile": profile})
+
+    conn.close()
+    return {"requests": result}
+
+# M5: approve join requests
+@router.post("/api/groups/{group_id}/requests/{request_id}/approve")
+def approve_request(group_id: str, request_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    req = cursor.execute("SELECT * FROM join_requests WHERE request_id = ? AND group_id = ?", (request_id, group_id)).fetchone()
+    
+    if not req or req["status"] != "PENDING": raise HTTPException(status_code=400, detail="Invalid request")
+    
+    try:
+        cursor.execute("UPDATE join_requests SET status = 'APPROVED' WHERE request_id = ?", (request_id,))
+        cursor.execute("INSERT OR IGNORE INTO group_members (group_id, traveller_id) VALUES (?, ?)", (group_id, req["traveller_id"]))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+    return {"message": "Request approved"}
 
 # M6: workspace roster
 @router.get("/api/groups/{group_id}/workspace")
 def get_workspace(group_id: str):
     conn = get_db()
     cursor = conn.cursor()
-    
-    group = cursor.execute("SELECT * FROM groups WHERE group_id = ?", (group_id,)).fetchone()
-    if not group: raise HTTPException(status_code=404, detail="Group not found")
 
-    members = cursor.execute("""
-        SELECT t.* FROM travellers t JOIN group_members gm ON t.traveller_id = gm.traveller_id WHERE gm.group_id = ?
-    """, (group_id,)).fetchall()
+    group = cursor.execute("SELECT * FROM groups WHERE group_id = ?", (group_id,)).fetchone()
+    members = cursor.execute("SELECT t.* FROM travellers t JOIN group_members gm ON t.traveller_id = gm.traveller_id WHERE gm.group_id = ?", (group_id,)).fetchall()
     
+    members_list = []
+    for m in members:
+        md = dict(m)
+        interests_rows = cursor.execute("SELECT interest_id FROM traveller_interests WHERE traveller_id = ?", (m["traveller_id"],)).fetchall()
+        md["interests"] = [row["interest_id"] for row in interests_rows]
+        members_list.append(md)
+        
     conn.close()
-    return {"group": dict(group), "members": [dict(m) for m in members]}
+    return {"group": dict(group), "members": members_list}
 
 # M6: hotel search and cost split math
 @router.get("/api/groups/{group_id}/hotels")
@@ -70,10 +122,10 @@ def search_group_hotels(group_id: str):
     nights = (datetime.strptime(group["check_out"], "%Y-%m-%d") - check_in_date).days
     stay_dates = [(check_in_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(nights)]
 
-    base = os.path.join(os.path.dirname(__file__), "..", "..", "data", "catalog")
-    with open(f"{base}/hotels.json", "r") as f: hotels = json.load(f)
-    with open(f"{base}/rooms.json", "r") as f: rooms = json.load(f)
-    with open(f"{base}/availability.json", "r") as f: availability = json.load(f)
+    base = os.path.join(BASE_DIR, "..", "..", "data", "catalog")
+    with open(os.path.join(base, "hotels.json"), "r") as f: hotels = json.load(f)
+    with open(os.path.join(base, "rooms.json"), "r") as f: rooms = json.load(f)
+    with open(os.path.join(base, "availability.json"), "r") as f: availability = json.load(f)
 
     city_hotels = [h for h in hotels if h["city"] == group["city"]]
     valid_options = []
@@ -95,7 +147,7 @@ def search_group_hotels(group_id: str):
                 valid_options.append({
                     "hotel_name": hotel["name"],
                     "rating": hotel["rating"],
-                    "image": hotel["image"],
+                    "image": hotel.get("image", ""),
                     "room_name": room["name"],
                     "total_cost_inr": total_cost,
                     "per_person_inr": int(total_cost / member_count)
@@ -105,10 +157,11 @@ def search_group_hotels(group_id: str):
 
 # M6: lock booking
 @router.post("/api/groups/{group_id}/book")
-def lock_booking(group_id: str):
+def lock_booking(group_id: str, req: BookRequest):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("UPDATE groups SET is_locked = 1 WHERE group_id = ?", (group_id,))
+    cursor.execute("UPDATE groups SET is_locked = 1, booked_hotel = ?, booked_room = ? WHERE group_id = ?",
+        (req.hotel_name, req.room_name, group_id))
     conn.commit()
     conn.close()
     return {"message": "Booking locked", "booking_id": f"BKG-{group_id}"}
