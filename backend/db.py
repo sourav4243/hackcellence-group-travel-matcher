@@ -54,3 +54,36 @@ def init_db():
 
     # seed data if empty
     cursor.execute("SELECT COUNT(*) FROM travellers")
+    if cursor.fetchone()[0] == 0:
+        print("Seeding database from JSON data pack...")
+        
+        # seed travellers
+        with open(os.path.join(DATA_DIR, "travellers.json"), "r") as f:
+            travellers = json.load(f)
+            for t in travellers:
+                cursor.execute("""
+                    INSERT INTO travellers (traveller_id, name, gender, home_city, gender_preference)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (t["traveller_id"], t["name"], t["gender"], t["home_city"], t["gender_preference"]))
+                
+                for interest in t.get("interests", []):
+                    cursor.execute("INSERT INTO traveller_interests (traveller_id, interest_id) VALUES (?, ?)",
+                                   (t["traveller_id"], interest))
+        
+        # seed groups
+        with open(os.path.join(DATA_DIR, "groups.json"), "r") as f:
+            groups = json.load(f)
+            for g in groups:
+                cursor.execute("""
+                    INSERT INTO groups (group_id, name, owner_id, city, check_in, check_out, max_size, budget_inr, itinerary, is_locked)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                """, (g["group_id"], g["name"], g["owner_id"], g["city"], g["check_in"], g["check_out"], g["max_size"], g["budget_inr"], g["itinerary"]))
+                
+                for member_id in g.get("member_ids", []):
+                    cursor.execute("INSERT OR IGNORE INTO group_members (group_id, traveller_id) VALUES (?, ?)",
+                                   (g["group_id"], member_id))
+
+        conn.commit()
+        print("Database seeded successfully.")
+    
+    conn.close()
