@@ -7,7 +7,7 @@ class SignupRequest(BaseModel):
     gender: str
     home_city: str
     gender_preference: str
-    interests: List[str]
+    interests: Optional[List[str]] = []
 
 # m2: create group post
 class GroupCreateRequest(BaseModel):
@@ -19,6 +19,17 @@ class GroupCreateRequest(BaseModel):
     max_size: int
     budget_inr: int
     itinerary: str
+    interests: Optional[List[str]] = []
+
+class GroupUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    city: Optional[str] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
+    max_size: Optional[int] = None
+    budget_inr: Optional[int] = None
+    itinerary: Optional[str] = None
+    interests: Optional[List[str]] = None
 
 
 # m3/m4: search groups
@@ -33,6 +44,10 @@ class SearchRequest(BaseModel):
 # join group
 class JoinRequest(BaseModel):
     traveller_id: str
+    interests: Optional[List[str]] = None
+
+class InterestsUpdateRequest(BaseModel):
+    interests: List[str]
 
 class BookRequest(BaseModel):
     hotel_name: Optional[str] = None
