@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 import os
 import uuid
 
-from schema import JoinRequest, BookRequest
+from schema import JoinRequest, BookRequest, GroupUpdateRequest
 
 router = APIRouter()
-DB_FILE = "hackathon.db"
 BASE_DIR = os.path.dirname(__file__)
+DB_FILE = os.path.join(BASE_DIR, "..", "hackathon.db")
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
@@ -38,6 +38,10 @@ def join_group(group_id: str, req: JoinRequest):
 
     request_id = f"JR-{str(uuid.uuid4())[:6].upper()}"
     try:
+        if req.interests:
+            for interest in req.interests:
+                cursor.execute("INSERT OR IGNORE INTO traveller_interests (traveller_id, interest_id) VALUES (?, ?)", (req.traveller_id, interest))
+
         cursor.execute("INSERT INTO join_requests (request_id, group_id, traveller_id, status, created_at) VALUES (?, ?, ?, 'PENDING', ?)",
             (request_id, group_id, req.traveller_id, datetime.utcnow().isoformat()))
         conn.commit()
@@ -120,6 +124,8 @@ def search_group_hotels(group_id: str):
 
     check_in_date = datetime.strptime(group["check_in"], "%Y-%m-%d")
     nights = (datetime.strptime(group["check_out"], "%Y-%m-%d") - check_in_date).days
+    if nights <= 0:
+        nights = 1
     stay_dates = [(check_in_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(nights)]
 
     base = os.path.join(BASE_DIR, "..", "..", "data", "catalog")
@@ -138,7 +144,8 @@ def search_group_hotels(group_id: str):
             
             for date in stay_dates:
                 avail = next((a for a in availability if a["room_id"] == room["room_id"] and a["date"] == date), None)
-                if not avail or avail["rooms_left"] < req_rooms:
+                # If availability record exists, check rooms_left; otherwise assume available
+                if avail is not None and avail["rooms_left"] < req_rooms:
                     is_available = False
                     break
             
@@ -147,8 +154,14 @@ def search_group_hotels(group_id: str):
                 valid_options.append({
                     "hotel_name": hotel["name"],
                     "rating": hotel["rating"],
+                    "stars": hotel.get("stars", 0),
+                    "area": hotel.get("area", ""),
                     "image": hotel.get("image", ""),
                     "room_name": room["name"],
+                    "req_rooms": req_rooms,
+                    "price_per_night": room["price_per_night"]["amount"],
+                    "nights": nights,
+                    "member_count": member_count,
                     "total_cost_inr": total_cost,
                     "per_person_inr": int(total_cost / member_count)
                 })
@@ -165,3 +178,144 @@ def lock_booking(group_id: str, req: BookRequest):
     conn.commit()
     conn.close()
     return {"message": "Booking locked", "booking_id": f"BKG-{group_id}"}
+
+# M6: unlock group / cancel booking lock
+@router.post("/api/groups/{group_id}/unlock")
+def unlock_group(group_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    group = cursor.execute("SELECT group_id FROM groups WHERE group_id = ?", (group_id,)).fetchone()
+    if not group:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Group not found")
+    cursor.execute("UPDATE groups SET is_locked = 0, booked_hotel = NULL, booked_room = NULL WHERE group_id = ?", (group_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Group unlocked successfully", "is_locked": False}
+
+# Edit / Update group details
+@router.put("/api/groups/{group_id}")
+def update_group(group_id: str, req: GroupUpdateRequest):
+    conn = get_db()
+    cursor = conn.cursor()
+    group = cursor.execute("SELECT * FROM groups WHERE group_id = ?", (group_id,)).fetchone()
+    if not group:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    fields = []
+    values = []
+    if req.name is not None:
+        fields.append("name = ?")
+        values.append(req.name)
+    if req.city is not None:
+        fields.append("city = ?")
+        values.append(req.city)
+    if req.check_in is not None:
+        fields.append("check_in = ?")
+        values.append(req.check_in)
+    if req.check_out is not None:
+        fields.append("check_out = ?")
+        values.append(req.check_out)
+    if req.max_size is not None:
+        fields.append("max_size = ?")
+        values.append(req.max_size)
+    if req.budget_inr is not None:
+        fields.append("budget_inr = ?")
+        values.append(req.budget_inr)
+    if req.itinerary is not None:
+        fields.append("itinerary = ?")
+        values.append(req.itinerary)
+
+    if fields:
+        values.append(group_id)
+        cursor.execute(f"UPDATE groups SET {', '.join(fields)} WHERE group_id = ?", values)
+
+    if req.interests and group["owner_id"]:
+        for interest in req.interests:
+            cursor.execute("INSERT OR IGNORE INTO traveller_interests (traveller_id, interest_id) VALUES (?, ?)", (group["owner_id"], interest))
+
+    conn.commit()
+    conn.close()
+    return {"message": "Group updated successfully"}
+
+# Delete group and related members/requests
+@router.delete("/api/groups/{group_id}")
+def delete_group(group_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    group = cursor.execute("SELECT group_id FROM groups WHERE group_id = ?", (group_id,)).fetchone()
+    if not group:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Group not found")
+    cursor.execute("DELETE FROM join_requests WHERE group_id = ?", (group_id,))
+    cursor.execute("DELETE FROM group_members WHERE group_id = ?", (group_id,))
+    cursor.execute("DELETE FROM groups WHERE group_id = ?", (group_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Group deleted successfully", "group_id": group_id}
+
+# Clean database re-seed endpoint for fresh demos
+@router.post("/api/admin/reset-db")
+def admin_reset_database():
+    import sys
+    sys.path.insert(0, os.path.join(BASE_DIR, ".."))
+    from db import reset_db
+    reset_db()
+    return {"message": "Database re-seeded cleanly from original JSON catalog."}
+
+# M5: decline join request
+@router.post("/api/groups/{group_id}/requests/{request_id}/decline")
+def decline_request(group_id: str, request_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    req = cursor.execute("SELECT * FROM join_requests WHERE request_id = ? AND group_id = ?", (request_id, group_id)).fetchone()
+
+    if not req or req["status"] != "PENDING":
+        raise HTTPException(status_code=400, detail="Invalid request")
+
+    try:
+        cursor.execute("UPDATE join_requests SET status = 'DECLINED' WHERE request_id = ?", (request_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+    return {"message": "Request declined"}
+
+# Dashboard: get user's groups
+@router.get("/api/users/{traveller_id}/groups")
+def get_user_groups(traveller_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    rows = cursor.execute("""
+        SELECT g.*
+        FROM groups g
+        JOIN group_members gm ON g.group_id = gm.group_id
+        WHERE gm.traveller_id = ?
+    """, (traveller_id,)).fetchall()
+
+    groups = []
+    for row in rows:
+        member_count = cursor.execute(
+            "SELECT COUNT(*) FROM group_members WHERE group_id = ?",
+            (row["group_id"],)
+        ).fetchone()[0]
+        role = "owner" if row["owner_id"] == traveller_id else "member"
+        groups.append({
+            "group_id": row["group_id"],
+            "name": row["name"],
+            "city": row["city"],
+            "check_in": row["check_in"],
+            "check_out": row["check_out"],
+            "max_size": row["max_size"],
+            "budget_inr": row["budget_inr"],
+            "member_count": member_count,
+            "is_locked": bool(row["is_locked"]),
+            "role": role
+        })
+
+    conn.close()
+    return {"groups": groups}
