@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
 # import our database initializer and our decoupled routers
 from db import init_db 
@@ -30,6 +32,12 @@ app.add_middleware(
 app.include_router(search.router)
 app.include_router(workspace.router)
 
-@app.get("/")
+# serve hotel images as static files
+app.mount("/images", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "images")), name="images")
+
+@app.get("/health")
 def health_check():
     return {"status": "Backend is running, Database is seeded, and Routers are securely wired!"}
+
+# serve frontend app directly at root
+app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "frontend"), html=True), name="frontend")
