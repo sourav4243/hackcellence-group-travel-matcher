@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List
 
-# lakshy's schemas (M1, M2, M3)
+# m1: sign up
 class SignupRequest(BaseModel):
     name: str
     gender: str
@@ -9,6 +9,7 @@ class SignupRequest(BaseModel):
     gender_preference: str
     interests: List[str]
 
+# m2: create group post
 class GroupCreateRequest(BaseModel):
     owner_id: str
     name: str
@@ -19,6 +20,8 @@ class GroupCreateRequest(BaseModel):
     budget_inr: int
     itinerary: str
 
+
+# m3/m4: search groups
 class SearchRequest(BaseModel):
     traveller_id: str
     city: str
@@ -27,6 +30,6 @@ class SearchRequest(BaseModel):
     budget_inr: int
     interests: List[str]
 
-# sourav's schemas (M5)
+# join group
 class JoinRequest(BaseModel):
     traveller_id: str
