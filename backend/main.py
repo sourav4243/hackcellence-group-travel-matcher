@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,7 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from db import init_db 
 from routers import search, workspace
 
-app = FastAPI(title="Group Travel Matcher")
+# modern FastAPI lifespan handler (replaces on_event which is now depricated)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # this runs exactly once when the server boots up
+    init_db()
+    yield
+    # anything after yield would run on server shutdown
+
+# pass the lifespan into the app
+app = FastAPI(title="Group Travel Matcher", lifespan=lifespan)
 
 # allow frontend to make requests without CORS blocking
 app.add_middleware(
@@ -15,11 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# run database setup on startup
-@app.on_event("startup")
-def startup_event():
-    init_db()
 
 # wire up the routers
 app.include_router(search.router)
